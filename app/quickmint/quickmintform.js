@@ -133,7 +133,7 @@ export default function QuickMintForm() {
 
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:8111/initiate-upload");
+      const response = await fetch("https://mintlock-production.up.railway.app/initiate-upload");
       const responseJson = await response.json();
 
       const uploadResult = await lit.encryptFile(file, {
