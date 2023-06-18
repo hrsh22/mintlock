@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+"use client"
+import React, { useRef, useState } from "react";
+import Link from "next/link";
 import classNames from "classnames";
 import { InboxOutlined } from "@ant-design/icons";
 import { message, Upload, Form } from "antd";
 import { NFTStorage, File, Blob } from "nft.storage";
-
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faFingerprint, faRocket } from "@fortawesome/free-solid-svg-icons";
+import lit from "./lit";
+import { upload } from "@spheron/browser-upload";
 export default function QuickMintForm() {
   const [activeStep, setActiveStep] = useState(0);
 
@@ -12,92 +17,61 @@ export default function QuickMintForm() {
   const [fileList, setFileList] = useState([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-
+    const [image, setImageLink] =useState("");
+    const [metadata, setMetadata] = useState("");
+    const fileInputRef = useRef(null);
+    const [file, setFile] = useState(null);
+    const [fileType, setFileType] = useState("");
+    const [uploadLink, setUploadLink]= useState("");
+    const [isLoading,setIsLoading] = useState("")
   const { Dragger } = Upload;
+
+  async function convertToBlob(imageUrl) {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    setFileBlob(blob);
+    console.log(blob);
+  }
 
   async function uploadToIPFS() {
     setLoading(true);
     try {
       const client = new NFTStorage({
         token:
-          "",
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDhDNkQ4M2JiYzNiOWI5OUIwZENBOWNEOGM2NWZFMTJENWE3Qjk3NGUiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY4NzA4Nzc3NjYwNCwibmFtZSI6Im5mdC1taW50ZXIifQ.7-pCnR5Cis1uM1wIvezdntpwjJH9kApiV_MOUiudE48",
       });
+
+      await convertToBlob(image);
 
       const metadata = await client.store({
         name: name,
         description: description,
         image: new File([fileBlob], "image.jpg", { type: "image/jpeg" }),
       });
-      let nftURI = "https://nftstorage.link/ipfs/" + metadata.url.slice(7);
+
+      console.log('metadata', metadata)
+      let nftURI = "https://ipfs.io/ipfs/" + metadata.url.slice(7);
       const data = await fetch(nftURI);
       const json = await data.json();
 
       let imageLink = "https://nftstorage.link/ipfs/" + json.image.slice(7);
-      setImageLink(imageLink);
-      setNFTURI(nftURI);
+
+      console.log("imageLink: ", imageLink);
+      console.log("nftURI: ", nftURI)
+
+      const metadataURL = "https://nftstorage.link/ipfs/" + metadata.url.slice(7);
+      setMetadata(metadataURL);
+    //   setImageLink(imageLink);
+    //   setNFTURI(nftURI);
       return metadata.url;
     } catch (error) {
       console.error("IPFS upload failed:", error);
     }
   }
 
-  const props = {
-    name: "file",
-    multiple: false,
-    action: "/",
-    onChange(info) {
-      const { status, response } = info.file;
-      if (status !== "uploading") {
-        console.log(info.file, info.fileList);
-      }
-      if (status === "done") {
-        message.success(`${info.file.name} file uploaded successfully.`);
-        const reader = new FileReader();
-        reader.readAsArrayBuffer(info.file.originFileObj);
-        reader.onloadend = async () => {
-          try {
-            const blob = new Blob([reader.result], { type: info.file.type });
-            setFileBlob(blob);
-          } catch (error) {
-            console.log(error);
-          }
-        };
-      } else if (status === "error") {
-        message.error(`${info.file.name} file upload failed.`);
-      }
-      setFileList(info.fileList);
-    },
-    onDrop(e) {
-      console.log("Dropped files", e.dataTransfer.files);
-    },
-  };
-
-  const handleFileUpload = (info) => {
-    const { status, response } = info.file;
-    if (status !== "uploading") {
-      console.log(info.file, info.fileList);
-    }
-    if (status === "done") {
-      message.success(`${info.file.name} file uploaded successfully.`);
-      const reader = new FileReader();
-      reader.readAsArrayBuffer(info.file.originFileObj);
-      reader.onloadend = async () => {
-        try {
-          const blob = new Blob([reader.result], { type: info.file.type });
-          setFileBlob(blob);
-        } catch (error) {
-          console.log(error);
-        }
-      };
-    } else if (status === "error") {
-      message.error(`${info.file.name} file upload failed.`);
-    }
-    setFileList(info.fileList);
-  };
-
   const steps = [
     "Step 1: Upload File",
-    "Step 2: Enter Details",
+    "Step 2: View Encrypted Metadata",
     "Step 3: Confirm",
   ];
 
@@ -109,9 +83,8 @@ export default function QuickMintForm() {
     setActiveStep((prevStep) => prevStep - 1);
   };
 
-  const handleStep0 = (e) => {
+  const handleStep0 = async (e) => {
     e.preventDefault();
-    console.log("FileBlob:", fileBlob);
     console.log("Name:", name);
     console.log("Description:", description);
     await uploadToIPFS();
@@ -131,10 +104,109 @@ export default function QuickMintForm() {
     setLoading(false);
   };
 
+  const handleSelectFile = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files ? event.target.files[0] : null;
+    setFile(selectedFile);
+    setFileType(selectedFile.name);
+    console.log("selectedFile",selectedFile)
+    setUploadLink("");
+
+    
+  };
+
+  const handleEncryptUpload = async () => {
+    if (!file) {
+      alert("No file selected");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch("http://localhost:8111/initiate-upload");
+      const responseJson = await response.json();
+
+      const uploadResult = await lit.encryptFile(file, {
+        token: responseJson.uploadToken,
+      });
+
+      setUploadLink(uploadResult.protocolLink);
+      setMetadata(uploadResult.protocolLink);
+      console.log("Name:", name);
+    console.log("Description:", description);
+    setActiveStep((prevStep) => prevStep + 1);
+    setLoading(false);
+
+    } catch (err) {
+      alert(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNext = async () => {
+    setActiveStep((prevActiveStep) => prevActiveStep + 1);
+  };
+
+  const handleFinalMint = async () => {
+    await MintNFT();
+  };
+
+  async function MintNFT() {
+    const addr = localStorage.getItem("walletAddress");
+   
+      // Check if MetaMask is installed
+      console.log("from check function in QuickMintForm.js: ", addr);
+      if (typeof window.ethereum === "undefined") {
+        alert("Please install MetaMask first.");
+        return;
+      }
+
+      // Connect to the MetaMask provider
+      window.addEventListener("load", async () => {
+        try {
+          await window.ethereum.request({
+            method: "eth_requestAccounts",
+          });
+        } catch (error) {}
+      });
+
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+
+      // MetaMask requires requesting permission to connect users accounts
+      // Request access to the user's MetaMask account
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      const account = accounts[0];
+
+      // Get the signer for the account
+      const signer = provider.getSigner(account);
+
+      const contractAddress = collectionAddress; // Replace with your contract address
+      const abi = QUICKMINT_COLLECTION_ABI; // Replace with your contract ABI
+      const contract = new ethers.Contract(contractAddress, abi, signer);
+
+      // Create the transaction
+      const transaction = await contract.quickMint(nftURI);
+
+      console.log(transaction);
+      setTxHash(transaction.hash);
+      console.log(transaction.hash);
+      console.log("NFT MINTED");
+    
+  }
+
+
   return (
     <div className="max-w-md mx-auto p-4">
       <div className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4 text-black">Stepper</h2>
+        {/* <h2 className="text-2xl font-semibold mb-4 text-black">Stepper</h2> */}
         <div className="flex items-center">
           {steps.map((step, index) => (
             <div
@@ -195,67 +267,82 @@ export default function QuickMintForm() {
                   onChange={(event) => setDescription(event.target.value)}
                 />
               </div>
-              <br />
-
-              <Form.Item align="center" valuePropName="fileList">
-                <div className="rounded-xl bg-gradient-to-r from-blue-900 via-violet-500 to-blue-800 p-1">
-                  <div className="items-center rounded-xl p-3 justify-center bg-slate-100 back">
-                    <Dragger {...props} listType="picture">
-                      <p className="ant-upload-drag-icon">
-                        <InboxOutlined />
-                      </p>
-                      <p className="ant-upload-text">
-                        Click or drag file to this area to upload
-                      </p>
-                      <p className="ant-upload-hint">
-                        Support for a single or bulk upload. Strictly prohibit
-                        from uploading company data or other band files
-                      </p>
-                    </Dragger>
-                  </div>
-                </div>
-              </Form.Item>
-
-              {/* <Form.Item style={{ display: "flex", justifyContent: "center" }}>
-                <br />
+              
+                <br/>
                 <button
-  className="bg-primary text-black rounded-lg px-4 py-2 text-lg"
-//   onClick={handleSubmit}
->
-  Submit
-</button>
-
-              </Form.Item> */}
+          type="button"
+          className="py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md"
+          onClick={handleSelectFile}
+        >
+          Select Image
+          <input
+                    id="file"
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="w-full h-full"
+                    style={{ display: "none" }}
+                  />
+        </button>
             </Form>
           </div>
         )}
 
         {activeStep === 1 && (
-          <div>
-            <h3 className="text-lg font-semibold mb-4">{steps[1]}</h3>
-            {/* Step 2 content */}
+   
+            <div>
+  <Link href={metadata} target="_blank">
+  
+      <div className="flex justify-center">
+        <div className="w-full sm:w-1/2 md:w-1/4">
+          <div className="flex items-center flex-col">
+          <FontAwesomeIcon icon={faFingerprint} className="text-red-500 text-6xl" />
+            <h3 className="text-xl text-black text-center font-bold mt-2">
+              View Metadata Link
+            </h3>
           </div>
+        </div>
+      </div>
+
+  </Link>
+</div>
+
+     
         )}
 
         {activeStep === 2 && (
           <div>
             <h3 className="text-lg font-semibold mb-4">{steps[2]}</h3>
-            {/* Step 3 content */}
+            <button
+      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full py-2 px-4 flex items-center"
+      onClick={handleFinalMint}
+    >
+      <FontAwesomeIcon icon={faRocket} className="mr-2" />
+      Mint NFT
+    </button>
           </div>
         )}
       </div>
 
       <div className="mt-8">
-            {activeStep == 0 & (
+            {activeStep === 0 && (
                 <button
-                onClick={handleStep0}
-                className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded mr-2"
+                onClick={handleEncryptUpload}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
               >
-                Next
+                Encrypt Metadata
               </button>
             )}
 
 
+{activeStep === 1 && (
+                <button
+                onClick={handleNext}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                Ready to Mint
+              </button>
+            )}
         {/* {activeStep > 0 && (
           <button
             onClick={handlePreviousStep}
