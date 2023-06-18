@@ -1,12 +1,35 @@
 "use client"
+import * as PushAPI from "@pushprotocol/restapi";
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faRightFromBracket, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faRightFromBracket, faUser, faBell } from "@fortawesome/free-solid-svg-icons";
 import Link from 'next/link';
+import { Button, Drawer, Card } from "antd";
 
 const Navbar = () => {
   const [address, setAddress] = useState(null);
   const [isWalletConnected,setIsWalletConnected] = useState(false);
+
+  const [open, setOpen] = useState(false);
+
+  const [notification, SetNotification] = useState([]);
+  const NotificationReceiver = async (props) => {
+    const notifications = await PushAPI.user.getFeeds({
+      user: `eip155:80001:${address}`, // user address in CAIP
+      env: "staging",
+    });
+    SetNotification(notifications);
+    console.log(notifications);
+  };
+
+  const showDrawer = () => {
+    NotificationReceiver();
+    setOpen(true);
+  };
+
+  const onClose = () => {
+    setOpen(false);
+  };
 
   useEffect(() => {
     const addr = localStorage.getItem("walletAddress");
@@ -52,7 +75,7 @@ const truncateEthAddress = (addr) => {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             
-            <div className="text-xl font-bold text-gray-800">NFT Minting App</div>
+            <div className="text-xl font-bold text-gray-800">MintLock</div>
             {/* <button className="text-white bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-md" onClick={connectWallet}>Connect Wallet</button> */}
             {/* {address ? (
               <>
@@ -88,16 +111,39 @@ const truncateEthAddress = (addr) => {
               &nbsp;&nbsp;&nbsp;<FontAwesomeIcon icon={faRightFromBracket} />
             </button>
 
-            <Link href="/profile" target="_blank">
-
-                <button
-                className="text-white bg-indigo-500 hover:bg-indigo-600 px-4 py-2 rounded-md"
-                  type="button"
-                >
-                  <FontAwesomeIcon icon={faUser} />
-                </button>
-
-            </Link>
+            <button
+                type="button"
+                onClick={showDrawer}
+                className="border-none outline-none active:scale-110 transition-all duration-300 relative"
+              >
+                 <FontAwesomeIcon icon={faBell} className="mr-2 text-black" />
+              </button>
+              <Drawer
+                title="Push Notifications - MintLock"
+                width={"700px"}
+                placement="right"
+                onClose={onClose}
+                open={open}
+              >
+                {notification.map((item, index) => {
+                  // console.log(notification);
+                  return (
+                    <Card
+                      key="key"
+                      className="mt-3"
+                      type="inner"
+                      title={item["title"]}
+                      extra={
+                        <a href="mintlock.vercel.app">
+                          <b>MintLock</b>
+                        </a>
+                      }
+                    >
+                      {item["message"]}
+                    </Card>
+                  );
+                })}
+              </Drawer>
           </>
         ) : (
           <button

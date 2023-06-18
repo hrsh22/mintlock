@@ -9,6 +9,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFingerprint, faRocket } from "@fortawesome/free-solid-svg-icons";
 import lit from "./lit";
 import { upload } from "@spheron/browser-upload";
+import { ethers } from "ethers";
+import { QUICKMINT_FACTORY_ABI, QUICKMINT_FACTORY_ADDRESS } from "./constant";
+import { sendNotifications} from "../components/pushprotocol";
+
 export default function QuickMintForm() {
   const [activeStep, setActiveStep] = useState(0);
 
@@ -24,6 +28,7 @@ export default function QuickMintForm() {
     const [fileType, setFileType] = useState("");
     const [uploadLink, setUploadLink]= useState("");
     const [isLoading,setIsLoading] = useState("")
+    const [txHash, setTxHash] = useState("")
   const { Dragger } = Upload;
 
   async function convertToBlob(imageUrl) {
@@ -72,7 +77,7 @@ export default function QuickMintForm() {
   const steps = [
     "Step 1: Upload File",
     "Step 2: View Encrypted Metadata",
-    "Step 3: Confirm",
+    "Step 3: Mint NFT",
   ];
 
   const handleNextStep = () => {
@@ -155,6 +160,7 @@ export default function QuickMintForm() {
 
   const handleFinalMint = async () => {
     await MintNFT();
+    await sendNotifications(txHash);
   };
 
   async function MintNFT() {
@@ -188,12 +194,12 @@ export default function QuickMintForm() {
       // Get the signer for the account
       const signer = provider.getSigner(account);
 
-      const contractAddress = collectionAddress; // Replace with your contract address
-      const abi = QUICKMINT_COLLECTION_ABI; // Replace with your contract ABI
+      const contractAddress = QUICKMINT_FACTORY_ADDRESS; // Replace with your contract address
+      const abi = QUICKMINT_FACTORY_ABI; // Replace with your contract ABI
       const contract = new ethers.Contract(contractAddress, abi, signer);
 
       // Create the transaction
-      const transaction = await contract.quickMint(nftURI);
+      const transaction = await contract.quickMint(account,metadata);
 
       console.log(transaction);
       setTxHash(transaction.hash);
@@ -313,13 +319,21 @@ export default function QuickMintForm() {
         {activeStep === 2 && (
           <div>
             <h3 className="text-lg font-semibold mb-4">{steps[2]}</h3>
-            <button
-      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full py-2 px-4 flex items-center"
-      onClick={handleFinalMint}
-    >
-      <FontAwesomeIcon icon={faRocket} className="mr-2" />
-      Mint NFT
-    </button>
+            {txHash ? (
+                <>
+                
+  <h2 className="text-black">TRANSACTION HASH: {txHash}</h2>
+  
+  </>
+) : (
+  <button
+    className="bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-full py-2 px-4 flex items-center"
+    onClick={handleFinalMint}
+  >
+    <FontAwesomeIcon icon={faRocket} className="mr-2" />
+    Mint NFT
+  </button>
+)}
           </div>
         )}
       </div>

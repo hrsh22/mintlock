@@ -53,7 +53,7 @@ const truncateEthAddress = (addr) => {
         <div className="container mx-auto px-4">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-4">Create and Mint Your Own NFTs</h1>
-            <p className="text-xl md:text-2xl mb-8">Unleash your creativity and start monetizing your digital assets.</p>
+            <p className="text-xl md:text-2xl mb-8">Be Secure with our encypted nfts.</p>
             <button className="bg-white text-indigo-500 hover:text-indigo-600 px-6 py-3 rounded-md font-bold">
               <Link href='/quickmint'>QuickMint NFT</Link>
               </button>
@@ -94,13 +94,13 @@ const truncateEthAddress = (addr) => {
               </svg>
               Community and Exposure
             </div>
-            <p className='text-gray-900'>Connect with a vibrant community of artists and collectors, showcasing your work to a global audience.</p>
+            <p className='text-gray-900'>Encypted NFTs helps securing privacy between dealers.</p>
           </div>
         </div>
       </section>
       <footer className="bg-gray-800 text-white py-6">
         <div className="container mx-auto px-4 text-center">
-          <p>© 2023 NFT Minting App. All rights reserved.</p>
+          <p>© 2023 MintLock. All rights reserved.</p>
         </div>
       </footer>
     </div>
